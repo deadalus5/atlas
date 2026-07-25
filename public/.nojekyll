@@ -1,0 +1,1 @@
+# Tells GitHub Pages not to run Jekyll, which would otherwise ignore Next's _next/ directory.
