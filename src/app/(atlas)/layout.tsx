@@ -1,7 +1,7 @@
 import { BodyStage } from "@/components/BodyStage";
 import { LayerRail } from "@/components/LayerRail";
 import { SessionTray } from "@/components/SessionTray";
-import { StoreHydrator, TopBar } from "@/components/TopBar";
+import { TopBar } from "@/components/TopBar";
 
 /**
  * The map lives in the layout, not the page, so it stays mounted while you
@@ -15,7 +15,6 @@ export default function AtlasLayout({
 }) {
   return (
     <div className="flex min-h-[100dvh] flex-col lg:h-[100dvh]">
-      <StoreHydrator />
       <TopBar />
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <LayerRail />

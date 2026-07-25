@@ -1,3 +1,4 @@
+import { STRUCTURES_2 } from "./structures2";
 import type { Structure } from "./types";
 
 /**
@@ -5,7 +6,7 @@ import type { Structure } from "./types";
  * someone who just wants their neck to stop hurting, once clinically for
  * someone who wants origin, insertion and nerve root.
  */
-export const STRUCTURES: Structure[] = [
+const CORE: Structure[] = [
   {
     id: "trapezius-upper",
     name: "Upper trapezius",
@@ -573,5 +574,7 @@ export const STRUCTURES: Structure[] = [
     ],
   },
 ];
+
+export const STRUCTURES: Structure[] = [...CORE, ...STRUCTURES_2];
 
 export const STRUCTURE_BY_ID = new Map(STRUCTURES.map((s) => [s.id, s]));

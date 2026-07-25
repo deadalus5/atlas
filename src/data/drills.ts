@@ -29,7 +29,9 @@ export const DRILLS: Drill[] = [
     difficulty: "beginner",
     equipment: ["none"],
     evidence: "moderate",
-    targets: ["longus-colli", "semispinalis-capitis", "trapezius-upper"],
+    // The deep neck flexors this trains sit on the anterior view, which is not
+    // drawn yet; target the posterior structures it directly affects.
+    targets: ["semispinalis-capitis", "trapezius-upper", "splenius-capitis"],
     seconds: 60,
   },
   {

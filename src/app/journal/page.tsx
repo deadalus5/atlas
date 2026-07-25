@@ -278,9 +278,10 @@ export default function JournalPage() {
                 <Trash2 size={13} /> Delete everything
               </button>
               <p className="w-full text-xs leading-relaxed text-ink-3">
-                {journal.length} entries · {completions.length} completed
-                sessions. All of it lives in this browser and has never been sent
-                anywhere.
+                {journal.length} {journal.length === 1 ? "entry" : "entries"} ·{" "}
+                {completions.length} completed{" "}
+                {completions.length === 1 ? "session" : "sessions"}. All of it
+                lives in this browser and has never been sent anywhere.
               </p>
             </section>
           </div>

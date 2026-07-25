@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { StoreHydrator } from "@/components/StoreHydrator";
 import "./globals.css";
 
 const inter = Inter({
@@ -96,7 +97,12 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full flex flex-col bg-bg text-ink">{children}</body>
+      <body className="min-h-full flex flex-col bg-bg text-ink">
+        {/* Must be at the root: /session, /journal and friends live outside the
+            map shell, and without this they rehydrate to an empty store. */}
+        <StoreHydrator />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ARM_L,
   ARM_R,
@@ -131,6 +131,45 @@ export function BodyMap({
     () => [...active].sort((a, b) => (a.shape.priority ?? 0) - (b.shape.priority ?? 0)),
     [active],
   );
+
+  /* Roving focus: one tab stop for the map, arrows to traverse. */
+  const [focusIdx, setFocusIdx] = useState(-1);
+  const lastAnnounced = useRef<string | null>(null);
+
+  useEffect(() => setFocusIdx(-1), [layer, view, referral]);
+
+  const focused =
+    focusIdx < 0
+      ? null
+      : referral
+        ? regions[focusIdx]
+        : hits[focusIdx];
+
+  const navPath = focused
+    ? referral
+      ? smooth((focused as (typeof regions)[number]).outline, true, 0.4)
+      : pathFor(focused as Instance)
+    : null;
+
+  // Mirror keyboard focus into the same hover channel the pointer uses, so the
+  // floating label names whatever is focused.
+  useEffect(() => {
+    if (!focused) {
+      if (lastAnnounced.current !== null) {
+        lastAnnounced.current = null;
+        if (referral) onRegionHover?.(null);
+        else onHover?.(null);
+      }
+      return;
+    }
+    const id = referral
+      ? (focused as (typeof regions)[number]).region.id
+      : (focused as Instance).shape.id;
+    if (lastAnnounced.current === id) return;
+    lastAnnounced.current = id;
+    if (referral) onRegionHover?.(id);
+    else onHover?.(id);
+  }, [focused, referral, onHover, onRegionHover]);
 
   return (
     <svg
@@ -298,48 +337,89 @@ export function BodyMap({
         </g>
       )}
 
-      {/* ---- hit targets: structures, or pain regions in referral mode --- */}
-      {referral ? (
-        <g id="region-hits">
-          {regions.map((r) => {
-            const isActive = activeRegion === r.region.id;
-            return (
-              <path
-                key={r.key}
-                d={smooth(r.outline, true, 0.4)}
-                fill={isActive ? "var(--heat)" : "var(--ink)"}
-                fillOpacity={isActive ? 0.2 : 0.02}
-                stroke={isActive ? "var(--heat)" : "var(--ink)"}
-                strokeOpacity={isActive ? 0.7 : 0.12}
-                strokeWidth={isActive ? 1.6 : 0.8}
-                strokeDasharray={isActive ? undefined : "4 4"}
-                style={{ cursor: "crosshair", transition: "all 120ms ease" }}
-                onPointerEnter={() => onRegionHover?.(r.region.id)}
-                onClick={() => onRegionSelect?.(r.region.id)}
-              >
-                <title>{r.region.label}</title>
-              </path>
-            );
-          })}
-        </g>
-      ) : (
-        <g id="hits">
-          {hits.map((i) => (
-            <path
-              key={i.key}
-              d={pathFor(i)}
-              fill="transparent"
-              stroke="transparent"
-              strokeWidth={(i.shape.hitPad ?? 0) * 2}
-              style={{ cursor: "pointer" }}
-              onPointerEnter={() => onHover?.(i.shape.id)}
-              onClick={() => onSelect?.(i.shape.id, i.side)}
-            >
-              <title>{i.shape.label}</title>
-            </path>
-          ))}
-        </g>
+      {/* ---- keyboard focus ring ---------------------------------------- */}
+      {focusIdx >= 0 && navPath && (
+        <path
+          d={navPath}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={3}
+          strokeDasharray="6 3"
+          pointerEvents="none"
+        />
       )}
+
+      {/* ---- hit targets: structures, or pain regions in referral mode ---
+          One tab stop for the whole map with arrow-key traversal, rather than
+          ~180 individual stops. Enter or Space selects what is focused. */}
+      <g
+        id={referral ? "region-hits" : "hits"}
+        tabIndex={0}
+        role="group"
+        aria-label={
+          referral
+            ? "Pain regions. Use arrow keys to move between areas, Enter to choose one."
+            : "Anatomical structures. Use arrow keys to move between them, Enter to open."
+        }
+        onFocus={() => setFocusIdx((f) => (f < 0 ? 0 : f))}
+        onBlur={() => setFocusIdx(-1)}
+        onKeyDown={(e) => {
+          const n = referral ? regions.length : hits.length;
+          if (!n) return;
+          if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            e.preventDefault();
+            setFocusIdx((f) => (f + 1) % n);
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            setFocusIdx((f) => (f - 1 + n) % n);
+          } else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (focusIdx < 0) return;
+            if (referral) onRegionSelect?.(regions[focusIdx].region.id);
+            else onSelect?.(hits[focusIdx].shape.id, hits[focusIdx].side);
+          }
+        }}
+      >
+        {referral
+          ? regions.map((r, n) => {
+              const isActive = activeRegion === r.region.id;
+              return (
+                <path
+                  key={r.key}
+                  data-region={r.region.id}
+                  d={smooth(r.outline, true, 0.4)}
+                  fill={isActive ? "var(--heat)" : "var(--ink)"}
+                  fillOpacity={isActive ? 0.2 : 0.02}
+                  stroke={isActive ? "var(--heat)" : "var(--ink)"}
+                  strokeOpacity={isActive ? 0.7 : 0.12}
+                  strokeWidth={isActive ? 1.6 : 0.8}
+                  strokeDasharray={isActive ? undefined : "4 4"}
+                  style={{ cursor: "crosshair", transition: "all 120ms ease" }}
+                  onPointerEnter={() => onRegionHover?.(r.region.id)}
+                  onPointerDown={() => setFocusIdx(n)}
+                  onClick={() => onRegionSelect?.(r.region.id)}
+                >
+                  <title>{r.region.label}</title>
+                </path>
+              );
+            })
+          : hits.map((i, n) => (
+              <path
+                key={i.key}
+                data-structure={i.shape.id}
+                d={pathFor(i)}
+                fill="transparent"
+                stroke="transparent"
+                strokeWidth={(i.shape.hitPad ?? 0) * 2}
+                style={{ cursor: "pointer" }}
+                onPointerEnter={() => onHover?.(i.shape.id)}
+                onPointerDown={() => setFocusIdx(n)}
+                onClick={() => onSelect?.(i.shape.id, i.side)}
+              >
+                <title>{i.shape.label}</title>
+              </path>
+            ))}
+      </g>
     </svg>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Moon, Sun, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAtlas } from "@/store/atlas";
 import { Segmented, useHydrated, useTheme } from "./ui";
 import { cn } from "@/lib/cn";
@@ -15,14 +15,6 @@ const NAV = [
   { href: "/desk/", label: "Desk" },
   { href: "/evidence/", label: "Evidence" },
 ];
-
-/** Rehydrates the persisted store once, on the client. */
-export function StoreHydrator() {
-  useEffect(() => {
-    void useAtlas.persist.rehydrate();
-  }, []);
-  return null;
-}
 
 export function TopBar() {
   const pathname = usePathname();

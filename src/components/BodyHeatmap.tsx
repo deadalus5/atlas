@@ -52,6 +52,7 @@ export function BodyHeatmap({
         return (
           <path
             key={r.key}
+            data-region={r.region.id}
             d={smooth(r.outline, true, 0.4)}
             fill={has ? "var(--heat)" : "transparent"}
             fillOpacity={has ? 0.12 + (v / 10) * 0.66 : 0}
