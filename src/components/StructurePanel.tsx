@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -67,6 +67,14 @@ export function StructurePanel({
 
   const drills = useMemo(() => (id ? drillsFor(id) : []), [id]);
   const clips = useMemo(() => (id ? mediaFor(id) : []), [id]);
+
+  // On a phone the drawer sits below the map, so tapping a muscle would
+  // otherwise appear to do nothing. Bring the panel into view.
+  const top = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 1024) return;
+    top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [id]);
   const { allowed, withheld } = useMemo(
     () => screenDrills(drills, safety),
     [drills, safety],
@@ -101,6 +109,7 @@ export function StructurePanel({
 
   return (
     <div className="flex flex-col">
+      <div ref={top} className="scroll-mt-2" />
       {/* ---- header ---- */}
       <div className="border-b border-rule px-5 pb-3 pt-5 sm:px-6">
         <div className="flex items-start gap-3">

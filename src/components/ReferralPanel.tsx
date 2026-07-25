@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { ArrowRight, Radio } from "lucide-react";
 import { LAYER_NAMES, type Layer } from "@/anatomy/types";
 import { useAtlas } from "@/store/atlas";
@@ -26,8 +27,16 @@ export function ReferralPanel({
 }) {
   const setMode = useAtlas((s) => s.setMode);
 
+  // On a phone the drawer sits below the map; bring it into view on selection.
+  const top = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 1024) return;
+    top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [regionLabel]);
+
   return (
     <div className="p-5 sm:p-6">
+      <div ref={top} className="scroll-mt-2" />
       <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-heat">
         <Radio size={12} /> Referred pain
       </p>
