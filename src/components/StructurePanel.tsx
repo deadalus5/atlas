@@ -24,12 +24,24 @@ import {
   type Media,
   type Structure,
 } from "@/data";
+import { mediaFor, type CuratedMedia } from "@/data/media";
+import { referencesFor } from "@/data/references";
 import { LAYER_NAMES } from "@/anatomy/types";
 import { useAtlas } from "@/store/atlas";
 import { Chip, useHydrated } from "./ui";
 import { cn } from "@/lib/cn";
 
-type Tab = "about" | "fix" | "referral" | "clinical";
+type Tab = "about" | "fix" | "referral" | "watch" | "clinical";
+
+/** Which kind of demonstration fits each modality. */
+const PURPOSE_FOR: Record<string, CuratedMedia["purpose"]> = {
+  stretch: "stretch",
+  release: "release",
+  activate: "strengthen",
+  mobilise: "mobility",
+  "nerve-glide": "nerve-glide",
+  integrate: "strengthen",
+};
 
 export function StructurePanel({
   structure,
@@ -54,6 +66,7 @@ export function StructurePanel({
   const inSession = hydrated && session.some((i) => i.structureId === id);
 
   const drills = useMemo(() => (id ? drillsFor(id) : []), [id]);
+  const clips = useMemo(() => (id ? mediaFor(id) : []), [id]);
   const { allowed, withheld } = useMemo(
     () => screenDrills(drills, safety),
     [drills, safety],
@@ -78,6 +91,11 @@ export function StructurePanel({
     { id: "about", label: "What it is", show: true },
     { id: "fix", label: "Fix it", show: allowed.length > 0 },
     { id: "referral", label: "Referral", show: (s.triggerPoints?.length ?? 0) > 0 },
+    {
+      id: "watch",
+      label: clips.length ? `Watch · ${clips.length}` : "Watch",
+      show: clips.length > 0,
+    },
     { id: "clinical", label: "Clinical", show: true },
   ];
 
@@ -211,6 +229,9 @@ export function StructurePanel({
                         key={d.id}
                         drill={d}
                         structureName={s.name}
+                        fallback={clips.find(
+                          (c) => c.purpose === PURPOSE_FOR[d.modality],
+                        )}
                         onPlay={setVideo}
                       />
                     ))}
@@ -264,6 +285,43 @@ export function StructurePanel({
           </div>
         )}
 
+        {tab === "watch" && (
+          <div className="space-y-4">
+            <p className="text-sm leading-relaxed text-ink-2">
+              Demonstrations for {s.name.toLowerCase()}, each deep-linked to the
+              second the demonstration begins so you skip the intro. Every one was
+              checked against YouTube before it shipped.
+            </p>
+            <ul className="space-y-2">
+              {clips.map((c) => (
+                <li key={c.youtubeId}>
+                  <button
+                    onClick={() => setVideo(c)}
+                    className="flex w-full items-start gap-3 rounded-card border border-rule bg-bg-2 p-3 text-left transition-colors hover:border-rule-2"
+                  >
+                    <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink">
+                      <Play size={12} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium leading-snug">
+                        {c.title}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-ink-3">
+                        {c.channel}
+                        {c.credibility ? ` · ${c.credibility}` : ""}
+                        {c.start
+                          ? ` · from ${Math.floor(c.start / 60)}:${String(c.start % 60).padStart(2, "0")}`
+                          : ""}
+                      </span>
+                    </span>
+                    <Chip className="shrink-0">{c.purpose}</Chip>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {tab === "clinical" && <ClinicalBlock s={s} expanded />}
 
         {s.redFlags && s.redFlags.length > 0 && (
@@ -305,6 +363,7 @@ function Block({
 }
 
 function ClinicalBlock({ s, expanded }: { s: Structure; expanded?: boolean }) {
+  const refs = referencesFor(s.id);
   const c = s.clinical;
   const rows: [string, string | undefined][] = [
     ["Origin", c.origin],
@@ -331,6 +390,30 @@ function ClinicalBlock({ s, expanded }: { s: Structure; expanded?: boolean }) {
             </div>
           ))}
       </dl>
+
+      {refs.length > 0 && (
+        <div className="mt-4">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-ink-3">
+            References
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {refs.map((r) => (
+              <li key={r.url}>
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-baseline gap-1 text-xs leading-relaxed text-ink-2 hover:text-ink"
+                >
+                  {r.title}
+                  <span className="text-ink-3">· {r.publisher}</span>
+                  <ExternalLink size={10} className="shrink-0 text-ink-3" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -338,14 +421,16 @@ function ClinicalBlock({ s, expanded }: { s: Structure; expanded?: boolean }) {
 function DrillCard({
   drill,
   structureName,
+  fallback,
   onPlay,
 }: {
   drill: Drill;
   structureName: string;
+  fallback?: CuratedMedia;
   onPlay: (m: Media) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const media = drill.media?.[0];
+  const media = drill.media?.[0] ?? fallback;
 
   return (
     <div className="overflow-hidden rounded-card border border-rule bg-bg-2">

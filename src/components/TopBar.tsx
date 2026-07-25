@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAtlas } from "@/store/atlas";
@@ -26,6 +26,7 @@ export function StoreHydrator() {
 
 export function TopBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const hydrated = useHydrated();
   const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
@@ -68,7 +69,7 @@ export function TopBar() {
             ariaLabel="Map mode"
             size="sm"
             value={mode}
-            onChange={setMode}
+            onChange={(m) => { setMode(m); router.push("/"); }}
             options={[
               { value: "explore", label: "What is this?" },
               { value: "referral", label: "It hurts here" },
@@ -152,7 +153,7 @@ export function TopBar() {
             size="sm"
             className="self-start"
             value={mode}
-            onChange={setMode}
+            onChange={(m) => { setMode(m); router.push("/"); }}
             options={[
               { value: "explore", label: "What is this?" },
               { value: "referral", label: "It hurts here" },

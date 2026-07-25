@@ -13,6 +13,7 @@ import {
   pathFor,
   smooth,
 } from "@/anatomy";
+import { regionInstances } from "@/anatomy/regions";
 import type { Instance, Layer, Shape, View } from "@/anatomy/types";
 import { cn } from "@/lib/cn";
 
@@ -70,6 +71,13 @@ export interface BodyMapProps {
   className?: string;
   /** Optional crop, as [x, y, width, height] in the shared 600x1400 space. */
   zoom?: [number, number, number, number];
+  /** "referral" swaps the hit targets from structures to pain regions. */
+  mode?: "explore" | "referral";
+  /** Structures to flag as suspects, drawn over the top whatever their depth. */
+  litIds?: string[];
+  activeRegion?: string | null;
+  onRegionSelect?: (regionId: string) => void;
+  onRegionHover?: (regionId: string | null) => void;
 }
 
 export function BodyMap({
@@ -81,7 +89,15 @@ export function BodyMap({
   onHover,
   className,
   zoom,
+  mode = "explore",
+  litIds,
+  activeRegion,
+  onRegionSelect,
+  onRegionHover,
 }: BodyMapProps) {
+  const referral = mode === "referral";
+  const litSet = useMemo(() => new Set(litIds ?? []), [litIds]);
+  const regions = useMemo(() => regionInstances(), []);
   const all = useMemo(() => instancesFor(SHAPES_BY_VIEW[view]), [view]);
 
   const byLayer = useMemo(() => {
@@ -257,23 +273,73 @@ export function BodyMap({
         ))}
       </g>
 
-      {/* ---- invisible hit targets -------------------------------------- */}
-      <g id="hits">
-        {hits.map((i) => (
-          <path
-            key={i.key}
-            d={pathFor(i)}
-            fill="transparent"
-            stroke="transparent"
-            strokeWidth={(i.shape.hitPad ?? 0) * 2}
-            style={{ cursor: "pointer" }}
-            onPointerEnter={() => onHover?.(i.shape.id)}
-            onClick={() => onSelect?.(i.shape.id, i.side)}
-          >
-            <title>{i.shape.label}</title>
-          </path>
-        ))}
-      </g>
+      {/* ---- suspects, drawn over everything regardless of their depth --- */}
+      {referral && litSet.size > 0 && (
+        <g id="suspects" pointerEvents="none">
+          {all
+            .filter((i) => litSet.has(i.shape.id))
+            .map((i) => (
+              <g key={`lit-${i.key}`}>
+                <path
+                  d={pathFor(i)}
+                  fill="var(--heat)"
+                  opacity={0.5}
+                  style={{ filter: "blur(3px)" }}
+                />
+                <path
+                  d={pathFor(i)}
+                  fill="none"
+                  stroke="var(--heat)"
+                  strokeWidth={2.4}
+                  strokeLinejoin="round"
+                />
+              </g>
+            ))}
+        </g>
+      )}
+
+      {/* ---- hit targets: structures, or pain regions in referral mode --- */}
+      {referral ? (
+        <g id="region-hits">
+          {regions.map((r) => {
+            const isActive = activeRegion === r.region.id;
+            return (
+              <path
+                key={r.key}
+                d={smooth(r.outline, true, 0.4)}
+                fill={isActive ? "var(--heat)" : "var(--ink)"}
+                fillOpacity={isActive ? 0.2 : 0.02}
+                stroke={isActive ? "var(--heat)" : "var(--ink)"}
+                strokeOpacity={isActive ? 0.7 : 0.12}
+                strokeWidth={isActive ? 1.6 : 0.8}
+                strokeDasharray={isActive ? undefined : "4 4"}
+                style={{ cursor: "crosshair", transition: "all 120ms ease" }}
+                onPointerEnter={() => onRegionHover?.(r.region.id)}
+                onClick={() => onRegionSelect?.(r.region.id)}
+              >
+                <title>{r.region.label}</title>
+              </path>
+            );
+          })}
+        </g>
+      ) : (
+        <g id="hits">
+          {hits.map((i) => (
+            <path
+              key={i.key}
+              d={pathFor(i)}
+              fill="transparent"
+              stroke="transparent"
+              strokeWidth={(i.shape.hitPad ?? 0) * 2}
+              style={{ cursor: "pointer" }}
+              onPointerEnter={() => onHover?.(i.shape.id)}
+              onClick={() => onSelect?.(i.shape.id, i.side)}
+            >
+              <title>{i.shape.label}</title>
+            </path>
+          ))}
+        </g>
+      )}
     </svg>
   );
 }

@@ -17,11 +17,19 @@ export interface JournalEntry {
   id: string;
   /** ISO date, day resolution. */
   date: string;
-  structureId: string;
+  regionId: string;
   intensity: number; // 0-10
   note?: string;
   tags?: string[];
-  routineId?: string;
+}
+
+/** A session actually finished — kept apart from pain logs so the journal can
+ *  honestly correlate "the weeks you did the work" against "how you felt". */
+export interface Completion {
+  id: string;
+  date: string;
+  structureIds: string[];
+  minutes: number;
 }
 
 /** Declared context that gates which drills are safe to offer. */
@@ -52,6 +60,7 @@ interface AtlasState {
   acknowledgedRedFlags: boolean;
   session: SessionItem[];
   journal: JournalEntry[];
+  completions: Completion[];
   pinned: string[];
 
   setView: (v: View) => void;
@@ -72,6 +81,7 @@ interface AtlasState {
   logPain: (e: Omit<JournalEntry, "id">) => void;
   removeJournal: (id: string) => void;
   clearJournal: () => void;
+  logCompletion: (structureIds: string[], minutes: number) => void;
 
   togglePin: (id: string) => void;
 
@@ -95,6 +105,7 @@ export const useAtlas = create<AtlasState>()(
       acknowledgedRedFlags: false,
       session: [],
       journal: [],
+      completions: [],
       pinned: [],
 
       setView: (view) => set({ view }),
@@ -131,7 +142,20 @@ export const useAtlas = create<AtlasState>()(
         set((s) => ({ journal: [{ ...e, id: uid() }, ...s.journal] })),
       removeJournal: (id) =>
         set((s) => ({ journal: s.journal.filter((j) => j.id !== id) })),
-      clearJournal: () => set({ journal: [] }),
+      clearJournal: () => set({ journal: [], completions: [] }),
+
+      logCompletion: (structureIds, minutes) =>
+        set((s) => ({
+          completions: [
+            {
+              id: uid(),
+              date: new Date().toISOString().slice(0, 10),
+              structureIds,
+              minutes,
+            },
+            ...s.completions,
+          ],
+        })),
 
       togglePin: (id) =>
         set((s) => ({
@@ -147,6 +171,7 @@ export const useAtlas = create<AtlasState>()(
             atlas: 1,
             exportedAt: new Date().toISOString(),
             journal: s.journal,
+            completions: s.completions,
             pinned: s.pinned,
             session: s.session,
             safety: s.safety,
@@ -169,6 +194,7 @@ export const useAtlas = create<AtlasState>()(
           if (!d || typeof d !== "object") return false;
           set((s) => ({
             journal: Array.isArray(d.journal) ? d.journal : s.journal,
+            completions: Array.isArray(d.completions) ? d.completions : s.completions,
             pinned: Array.isArray(d.pinned) ? d.pinned : s.pinned,
             session: Array.isArray(d.session) ? d.session : s.session,
             safety: d.safety ? { ...EMPTY_SAFETY, ...d.safety } : s.safety,

@@ -190,6 +190,41 @@ export function buildRoutine(
 }
 
 /* ---------------------------------------------------------------------------
+   Referred pain — the reverse lookup
+--------------------------------------------------------------------------- */
+
+export interface ReferralCandidate {
+  structure: Structure;
+  triggerPoint: NonNullable<Structure["triggerPoints"]>[number];
+}
+
+/**
+ * "It hurts here — what causes that?" Muscles refer pain away from themselves,
+ * so the answer is frequently nowhere near the spot the user pointed at. That
+ * is the entire reason this lookup exists.
+ */
+export function structuresReferringTo(regionId: string): ReferralCandidate[] {
+  const out: ReferralCandidate[] = [];
+  for (const s of STRUCTURES) {
+    for (const tp of s.triggerPoints ?? []) {
+      if (tp.regions.includes(regionId)) out.push({ structure: s, triggerPoint: tp });
+    }
+  }
+  return out;
+}
+
+/** Regions that at least one documented pattern refers into. */
+export function regionsWithReferrals(): Set<string> {
+  const set = new Set<string>();
+  for (const s of STRUCTURES) {
+    for (const tp of s.triggerPoints ?? []) {
+      for (const r of tp.regions) set.add(r);
+    }
+  }
+  return set;
+}
+
+/* ---------------------------------------------------------------------------
    Media helpers
 --------------------------------------------------------------------------- */
 
